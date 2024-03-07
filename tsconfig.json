@@ -10,5 +10,10 @@
     "forceConsistentCasingInFileNames": true,
     "strictPropertyInitialization": false,
     "strict": true,
+    "baseUrl": "./",
+    "paths": {
+      "@/*": ["src/*"],
+      // Add your aliases as needed
+    },
   },
 }

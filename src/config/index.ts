@@ -1,4 +1,6 @@
 import { config as dotenvConfig } from 'dotenv';
+import * as process from 'process';
+import path from 'path';
 
 dotenvConfig();
 
@@ -16,6 +18,14 @@ const config = {
     entities: [process.env.TYPEORM_ENTITIES || 'src/api/repositories/entities/*.ts'],
     migrations: [process.env.TYPEORM_MIGRATIONS || 'src/db/migrations/*.ts'],
   },
+  sendgridAPIKey: process.env.SEND_GRID || 'send',
+  fromEmail: process.env.SEND_EMAIL || 'email',
+  JWTSecret: process.env.JWT_SECRET || 'very_secret',
+  JWTExpireIn: process.env.JWT_EXPIRE_IN,
+  JWTExpireInLong: process.env.JWT_EXPIRE_IN_LONG,
+  githubClientId: process.env.GITHUB_CLIENT_ID || 'github',
+  githubClientSecret: process.env.GITHUB_CLIENT_SECRET || 'github',
+  wsPort: process.env.WS_PORT ? parseInt(process.env.WS_PORT, 10) : 1990,
 };
 
 export default config;

@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "runtimeExecutable": "/usr/local/bin/node",
+      "runtimeExecutable": "node",
       "type": "node",
       "request": "launch",
       "name": "Debug Dev Env",

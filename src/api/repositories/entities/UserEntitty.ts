@@ -1,25 +1,24 @@
-import  'reflect-metadata';
+import 'reflect-metadata';
 import { Entity, Column, Index, CreateDateColumn, PrimaryGeneratedColumn, UpdateDateColumn, OneToMany } from 'typeorm';
-import { IsEmail, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, ValidateNested } from 'class-validator';
 import { UserRole } from '../../enums/UserRole';
+
 import { AutoMap } from '@nartc/automapper';
 import { AuthProviderEntity } from './AuthProviderEntity';
 import { UserStatus } from '../../enums/UserStatuses';
+import { BaseEntity } from './BaseEntity';
+import { PhotoEntity } from './PhotoEntity';
 
 @Entity('users')
-export class UserEntity {
-  @AutoMap()
-  @PrimaryGeneratedColumn('uuid')
-  public id: string;
-
+export class UserEntity extends BaseEntity {
   @AutoMap()
   @IsOptional()
-  @Column({ name: 'first_name', type: 'varchar', length: 25, nullable: true })
+  @Column({ name: 'first_name', type: 'varchar', length: 25 })
   public firstName: string;
 
   @AutoMap()
   @IsOptional()
-  @Column({ name: 'last_name', type: 'varchar', length: 25, nullable: true })
+  @Column({ name: 'last_name', type: 'varchar', length: 25 })
   public lastName: string;
 
   @AutoMap()
@@ -34,12 +33,12 @@ export class UserEntity {
   public passwordHash: string;
 
   @AutoMap()
-  @Column({ type: 'enum', enum: UserRole, default: UserRole.USER })
+  @Column({ type: 'varchar', default: UserRole.USER })
   role: string;
 
   @AutoMap()
   @IsNotEmpty()
-  @Column({ type: 'enum', enum: UserStatus, default: UserStatus.NEW })
+  @Column({ type: 'varchar', default: UserStatus.NEW })
   public status: string;
 
   @AutoMap()
@@ -59,10 +58,11 @@ export class UserEntity {
   public authProviders: AuthProviderEntity[];
 
   @AutoMap()
-  @CreateDateColumn({ name: 'created_at' })
-  public createdAt: Date;
+  @Column({ name: 'is_online', type: 'boolean', default: false })
+  isOnline: boolean;
 
   @AutoMap()
-  @UpdateDateColumn({ name: 'updated_at' })
-  public updatedAt: Date;
+  @OneToMany(() => PhotoEntity, (photo) => photo.user)
+  @ValidateNested({ each: true })
+  photos: PhotoEntity[];
 }

@@ -8,8 +8,7 @@ import { User } from '../../api/services/models/User';
 import { AuthService } from '../../api/services/AuthService';
 import { AuthProvider } from '../../api/services/models/AuthProvider';
 import { Provider } from '../../api/enums/Provider';
-
-
+import {UnAuthorizedError} from "@/api/errors/UnAuthorizedError";
 
 const JWTStrategy = passportJWT.Strategy;
 const ExtractJWT = passportJWT.ExtractJwt;
@@ -29,7 +28,7 @@ const SetupPassport = () => {
           const userService = Container.get<UserService>(UserService);
           const user = await userService.getUser(jwtPayload.id);
           if (!user) {
-            done(null, false);
+              throw new UnAuthorizedError();
           }
 
           done(null, user);
@@ -65,7 +64,7 @@ const SetupPassport = () => {
           authProvider.provider = Provider.GITHUB;
 
           const authService = Container.get<AuthService>(AuthService);
-              let user = await authService.findOrCreateUserWithProvider(newUser, authProvider);
+          let user = await authService.findOrCreateUserWithProvider(newUser, authProvider);
 
           return done(null, user);
         } catch (error) {

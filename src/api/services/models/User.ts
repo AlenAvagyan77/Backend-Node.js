@@ -1,9 +1,8 @@
 import { AutoMap } from '@nartc/automapper';
+import { BaseModel } from './BaseModel';
+import { Photo } from './Photo';
 
-export class User {
-  @AutoMap()
-  public id: string;
-
+export class User extends BaseModel {
   @AutoMap()
   public firstName: string;
 
@@ -32,10 +31,10 @@ export class User {
   resetPasswordToken: string;
 
   @AutoMap()
-  public createdAt: Date;
+  isOnline: boolean;
 
-  @AutoMap()
-  public updatedAt: Date;
+  @AutoMap(() => Photo)
+  photos: Photo[];
 
   public get fullName(): string {
     return `${this.firstName} ${this.lastName}`;

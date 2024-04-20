@@ -9,7 +9,6 @@ import { LoginBody } from './requests/auth/LoginBody';
 import { AuthResponse } from './responses/auth/AuthResponse';
 import { User } from '../services/models/User';
 
-
 @JsonController('/auth')
 @Service()
 export class AuthController {

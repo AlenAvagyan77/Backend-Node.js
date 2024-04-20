@@ -10,17 +10,17 @@ import { User } from '../services/models/User';
 @JsonController('/auth/github')
 @Service()
 export class GitHubController {
-    constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) {}
 
-    // Trigger GitHub authentication
-    @Get('/')
-    @UseBefore(passport.authenticate('github', { session: false }))
-    login(@Req() req: Request, @Res() res: Response) {}
+  // Trigger GitHub authentication
+  @Get('/')
+  @UseBefore(passport.authenticate('github', { session: false }))
+  login(@Req() req: Request, @Res() res: Response) {}
 
-    @Get('/callback')
-    @UseBefore(passport.authenticate('github', { failureRedirect: '/api/auth/login', session: false }))
-    public async githubCallback(@CurrentUser() user: User) {
-        const authResponse = await this.authService.socialLogin(user.id);
-        return Mapper.map(authResponse, AuthResponse);
-    }
+  @Get('/callback')
+  @UseBefore(passport.authenticate('github', { failureRedirect: '/api/auth/login', session: false }))
+  public async githubCallback(@CurrentUser() user: User) {
+    const authResponse = await this.authService.socialLogin(user.id);
+    return Mapper.map(authResponse, AuthResponse);
+  }
 }

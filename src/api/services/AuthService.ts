@@ -1,5 +1,4 @@
-import { Service } from 'typedi';
-import {Container} from 'typedi';
+import Container, { Service } from 'typedi';
 import { RegisterBody } from '../controllers/requests/auth/RegisterBody';
 import { User } from './models/User';
 import * as argon from 'argon2';
@@ -7,56 +6,65 @@ import * as jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { UserRepository } from '../repositories/UserRepository';
 import { MailService } from './MailService';
+import { UserStatus } from '../enums/UserStatuses';
 import { LoginBody } from '../controllers/requests/auth/LoginBody';
-import { Auth } from './models/Auth';
 import { BadRequestError } from 'routing-controllers';
-import { UserStatus } from '@/api/enums/UserStatuses';
-import config from '@/config';
-import { AuthProvider } from './models/AuthProvider';
+import { Auth } from './models/Auth';
+import config from '../../config';
 import { AuthProviderRepository } from '../repositories/AuthProviderRepository';
+import { AuthProvider } from './models/AuthProvider';
+import { UserService } from './UserService';
 import { WebSocketService } from '../../websocket';
-import {UserService} from "@/api/services/UserService";
+import { BaseService } from './BaseService';
+import {UserExistsError} from "@/api/errors/UserExistsError";
 
 interface JWTPayload {
   id: string;
 }
 
 @Service()
-export class AuthService {
-  constructor(private mailService: MailService, private userService: UserService) {}
+export class AuthService extends BaseService {
+  constructor(
+    private mailService: MailService,
+    private userService: UserService,
+  ) {
+    super();
+  }
   public async register(userData: RegisterBody): Promise<User> {
     try {
-      const passwordHash = await argon.hash(userData.password);
-      const verificationToken = this.generateVerificationToken();
-      const resetPasswordToken = this.generateVerificationToken();
-      const user = new User();
-      user.firstName = userData.firstName;
-      user.lastName = userData.lastName;
-      user.email = userData.email;
-      user.passwordHash = passwordHash;
-      user.role = 'user';
-      user.status = 'active';
-      user.verificationToken = verificationToken;
-      user.resetPasswordToken = resetPasswordToken;
-      user.isEmailSent = true;
-      const savedUser = await UserRepository.saveUser(user);
+      return await this.transaction(async (unitOfWork) => {
+        const passwordHash = await argon.hash(userData.password);
+        const verificationToken = this.generateVerificationToken();
+        const resetPasswordToken = this.generateVerificationToken();
+        const user = new User();
+        user.firstName = userData.firstName;
+        user.lastName = userData.lastName;
+        user.email = userData.email;
+        user.passwordHash = passwordHash;
+        user.role = 'user';
+        user.status = 'active';
+        user.verificationToken = verificationToken;
+        user.resetPasswordToken = resetPasswordToken;
+        user.isEmailSent = true;
+        const savedUser = await unitOfWork.userRepository.saveUser(user);
 
-      const emailSent = await this.mailService.sendMail(
-        user.email,
-        verificationToken,
-        'Verify your email',
-        savedUser.id,
-      );
+        const emailSent = await this.mailService.sendMail(
+          user.email,
+          verificationToken,
+          'Verify your email',
+          savedUser.id,
+        );
 
-      if (emailSent) {
-        savedUser.isEmailSent = true;
-        await UserRepository.saveUser(savedUser);
-      }
+        if (emailSent) {
+          savedUser.isEmailSent = true;
+          await unitOfWork.userRepository.update({ id: savedUser.id }, { isEmailSent: true });
+        }
 
-      return savedUser;
+        return savedUser;
+      });
     } catch (error: any) {
       if (error.code === '23505') {
-        throw new Error('User exist');
+        throw new UserExistsError();
       }
       throw error;
     }
@@ -69,17 +77,19 @@ export class AuthService {
   }
 
   async login(loginData: LoginBody): Promise<Auth> {
-    const user = await UserRepository.findByEmail(loginData.email);
-    if (!user) throw new BadRequestError('invalid credential');
+    return await this.transaction(async (unitOfWork) => {
+      const user = await unitOfWork.userRepository.findByEmail(loginData.email);
+      if (!user) throw new BadRequestError('invalid credential');
 
-    if (user.status !== UserStatus.ACTIVE) {
-      throw new BadRequestError('please confirm email');
-    }
+      if (user.status !== UserStatus.ACTIVE) {
+        throw new BadRequestError('please confirm email');
+      }
 
-    const psMatches = await argon.verify(user.passwordHash, loginData.password);
-    if (!psMatches) throw new BadRequestError('invalid credential');
+      const psMatches = await argon.verify(user.passwordHash, loginData.password);
+      if (!psMatches) throw new BadRequestError('invalid credential');
 
-    return await this.signToken(user.id, loginData.rememberMe);
+      return await this.signToken(user.id, loginData.rememberMe);
+    });
   }
 
   async signToken(userId: string, rememberMe?: boolean): Promise<Auth> {
@@ -112,18 +122,15 @@ export class AuthService {
         userData.status = UserStatus.ACTIVE;
         user = await UserRepository.saveUser(userData);
       }
-      let existingAuthProvider = await AuthProviderRepository.findByProviderId(
-          authProviderData.providerId
-      );
-    
-    
+      let existingAuthProvider = await AuthProviderRepository.findByProviderId(authProviderData.providerId);
+
       if (!existingAuthProvider) {
         authProviderData.userId = user.id;
         await AuthProviderRepository.save(authProviderData);
       } else {
         await AuthProviderRepository.update(
-            { id: existingAuthProvider.id },
-            { providerId: authProviderData.providerId },
+          { id: existingAuthProvider.id },
+          { providerId: authProviderData.providerId },
         );
       }
 
